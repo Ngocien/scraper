@@ -2,7 +2,7 @@
 
 Scrapes a Zendesk help center to clean Markdown, syncs it to an OpenAI vector store (uploading only changed articles) and runs daily in Docker.
 
-**Daily job logs:** [DigitalOcean App Platform – job runs & logs](https://cloud.digitalocean.com/apps/3760045d-7d28-4c79-b3fd-2d6b13cf942c/jobs/7e8e3305-b25a-4c27-b952-88f71e5d377b) (needs account access), plus a screenshot of a run below.
+**Daily job logs:** [DigitalOcean App Platform – job runs & logs](https://cloud.digitalocean.com/apps/3760045d-7d28-4c79-b3fd-2d6b13cf942c/jobs) (needs account access), plus a screenshot of a run below.
 Public backup run: [GitHub Actions › daily-sync](https://github.com/Ngocien/scraper/actions/workflows/daily-sync.yml).
 
 ## Setup & run locally
