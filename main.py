@@ -36,7 +36,8 @@ def setup_logging(log_dir: Path) -> None:
         handler.setFormatter(fmt)
         handler._kbsync = True
         root.addHandler(handler)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+    for noisy in ("httpx", "httpx2", "openai"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def to_doc(a: Article) -> Doc:

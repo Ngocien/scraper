@@ -6,7 +6,7 @@ jobs:
   - name: daily-sync
     kind: SCHEDULED
     schedule:
-      cron: "17 2 * * *"      # every day 02:17
+      cron: "30 10 * * *"     # every day 10:30
       time_zone: UTC
     github:
       repo: Ngocien/scraper

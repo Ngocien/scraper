@@ -22,7 +22,8 @@ def main() -> int:
     ap.add_argument("--no-prune", action="store_true", help="keep store files whose article is not in --dir")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+    for noisy in ("httpx", "httpx2", "openai"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("API_KEY")
     if not api_key:

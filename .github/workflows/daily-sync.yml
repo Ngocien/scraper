@@ -3,7 +3,7 @@ name: daily-sync
 
 on:
   schedule:
-    - cron: "17 14 * * *"  # 14:17 UTC, 12h after the DigitalOcean run (primary). Backup/bonus.
+    - cron: "17 14 * * *"  # 14:17 UTC, a few hours after the DigitalOcean run (primary). Backup/bonus.
   workflow_dispatch:        # "Run workflow" button for a manual run
 
 concurrency: daily-sync     # never two syncs at once
