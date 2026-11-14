@@ -33,6 +33,7 @@ class Doc:
     content: str
     url: str = ""
     title: str = ""
+    updated_at: str = ""  # Zendesk updated_at (the Last-Modified time), stored for reference
 
     @property
     def content_hash(self) -> str:
@@ -46,6 +47,7 @@ class Doc:
             "content_hash": self.content_hash,
             "url": self.url[:512],
             "title": self.title[:512],
+            "updated_at": self.updated_at[:512],
         }
 
 

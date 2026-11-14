@@ -1,0 +1,45 @@
+name: daily-sync
+
+on:
+  schedule:
+    - cron: "17 2 * * *"   # once a day, 02:17 UTC
+  workflow_dispatch:        # "Run workflow" button for a manual run
+
+concurrency: daily-sync     # never two syncs at once
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t kb-sync .
+
+      - name: Run job (scrape -> delta upload)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          VECTOR_STORE_ID: ${{ secrets.VECTOR_STORE_ID }}
+        run: |
+          mkdir -p logs && chmod 777 logs
+          docker run --rm \
+            -e OPENAI_API_KEY -e VECTOR_STORE_ID \
+            -v "$PWD/logs:/app/logs" \
+            kb-sync
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '### Last run' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat logs/last_run.json >> "$GITHUB_STEP_SUMMARY" || echo '{}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload run artefact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: last-run-${{ github.run_number }}
+          path: logs/
+          retention-days: 90
