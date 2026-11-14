@@ -31,28 +31,49 @@ pytest -q
 ```bash
 cp .env.sample .env        # set OPENAI_API_KEY
 python scrape.py
-python upload.py           # prints the vector store id; put it in .env as VECTOR_STORE_ID
-python ask.py "How do I add a YouTube video?"
+python upload.py           # prints the vector store id -> put it in .env as VECTOR_STORE_ID
+python ask.py "How do I add a YouTube video?"   # optional: test from the terminal
 ```
 
-`upload.py` creates (or reuses by name) the vector store and uploads each `.md` file with
-`files.create(purpose="assistants")`. It then attaches the file with `vector_stores.files.create_and_poll`.
-Each file carries the attributes `article_id`, `content_hash`, `url` and `title`.
+**API upload (no UI).** `upload.py` finds the vector store named `optibot-kb` or creates it.
+Each `.md` file goes up with `files.create(purpose="assistants")` and is attached with
+`vector_stores.files.create_and_poll`, with the attributes `article_id`, `content_hash`, `url` and `title`.
 
-**Only changes are uploaded.** The store keeps the hashes as file attributes, so no local state file is needed. Each run compares the scraped files with the store:
-- new article: uploaded
-- changed hash: the new version is uploaded, then the old file is deleted
-- same hash: skipped
-- article gone from the site: removed
+**Only changes are uploaded.** The hashes are stored on the vector store files, so no local state file is needed:
 
-The log shows `added / updated / skipped / removed`, plus how many files and chunks were embedded.
+| Article | Action |
+|---|---|
+| new | uploaded |
+| hash changed | new version uploaded, old file deleted |
+| hash unchanged | skipped |
+| gone from the site | removed |
+
+Pruning compares against everything in `articles/`, so don't empty that folder before running `upload.py`,
+or use `--no-prune`.
 
 **Chunking strategy:** static chunks of 800 tokens with 200 tokens of overlap (`kbsync/chunking.py`).
-- **Chunk size:** support articles are short and each covers one task. 800 tokens keeps a heading and its numbered steps in one chunk, so answers don't lose steps.
-- **Overlap:** 200 tokens keeps context when a long procedure has to be split.
-- **Citations:** every file has `Article URL:` at the top and bottom, so most chunks contain a citable URL.
-- **Chunk counts:** the API doesn't report chunks per file, so the count in the log is calculated locally with the same sliding-window rule.
+- **Chunk size:** support articles are short and each covers one task, so 800 tokens usually keeps a whole procedure (heading and numbered steps) in one chunk.
+- **Overlap:** 200 tokens keeps context when a long article has to be split.
+- **Citations:** every file starts and ends with `Article URL:`, so the URL is in the first and last chunk of each article.
 
-**Assistant:** in the [OpenAI Playground](https://platform.openai.com/playground), create an assistant or prompt.
-Paste `prompts/system_prompt.txt` as the system instructions, enable **File search** and select the `optibot-kb` vector store.
-`ask.py` runs the same setup through the Responses API.
+**Logged counts.** Each run logs (replace with your real first-run output):
+```
+Embedded <N> files / ~<M> chunks (added=.. updated=.. skipped=.. removed=.. failed=..). Store now holds <N> files / ~<M> chunks.
+OpenAI reports the store's files as {'completed': <N>, 'failed': 0, ...}, size <bytes> bytes
+```
+- **Chunks** are counted locally with the same sliding-window rule, because the API doesn't report chunks per file.
+- **File counts** come from OpenAI, as a cross-check.
+
+**Assistant (OpenAI Playground)**
+1. Open the [Playground](https://platform.openai.com/playground/assistants) and create an assistant.
+2. Paste `prompts/system_prompt.txt` as the instructions, word for word.
+3. Turn on **File search** and attach the `optibot-kb` vector store.
+4. Ask: *How do I add a YouTube video?*
+
+Optional: `ask.py` asks the same question from the terminal (Responses API + file search). The assignment only needs the Playground.
+
+**Sanity check:** the assistant (gpt-4.1-mini, File search on `optibot-kb`) answering *How do I add a YouTube video?*.
+It cites 3 `Article URL:` lines, as the system prompt allows.
+
+![Question and answer](docs/assistant-answer-1.webp)
+![Cited Article URLs](docs/assistant-answer-2.webp)

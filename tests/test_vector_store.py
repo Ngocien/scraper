@@ -46,6 +46,10 @@ class FakeOpenAI:
             def list(self, limit):
                 return fake.stores
 
+            def retrieve(self, vector_store_id):
+                return NS(id=vector_store_id, usage_bytes=123,
+                          file_counts=NS(completed=len(fake.vs_files), failed=0, in_progress=0))
+
             def create(self, name, chunking_strategy):
                 vs = NS(id="vs_new", name=name)
                 fake.stores.append(vs)
@@ -80,6 +84,8 @@ def test_first_run_uploads_all_then_second_run_skips_all():
     s1 = sync.sync(docs)
     assert (s1["added"], s1["updated"], s1["skipped"]) == (2, 0, 0)
     assert all(c == CHUNKING_STRATEGY for c in client.chunking)
+    assert s1["files_embedded"] == 2 and s1["chunks_embedded"] == 2
+    assert s1["store_file_counts"]["completed"] == 2
     assert {v["article_id"] for v in client.vs_files.values()} == {"1", "2"}
 
     s2 = sync.sync(docs)
@@ -111,3 +117,19 @@ def test_estimate_chunks():
     assert estimate_chunks("word " * 10) == 1
     long_text = "word " * 5000
     assert estimate_chunks(long_text) > estimate_chunks("word " * 2000) > 1
+
+
+def test_failed_upload_is_reported_and_not_counted_as_embedded():
+    client = FakeOpenAI()
+    sync = VectorStoreSync(client, name="kb")
+    real = client.vector_stores.files.create_and_poll
+
+    def flaky(vector_store_id, file_id, attributes, chunking_strategy):
+        if attributes["article_id"] == "2":
+            return NS(id=file_id, status="failed")
+        return real(vector_store_id, file_id, attributes, chunking_strategy)
+
+    client.vector_stores.files.create_and_poll = flaky
+    stats = sync.sync([doc("1"), doc("2")])
+    assert (stats["added"], stats["failed"], stats["files_embedded"], stats["chunks_embedded"]) == (1, 1, 1, 1)
+    assert stats["failures"] == ["add:2-x.md"]

@@ -46,6 +46,8 @@ def main() -> int:
         stats["files_embedded"], stats["chunks_embedded"], stats["added"], stats["updated"],
         stats["skipped"], stats["removed"], stats["failed"], stats["total_files"], stats["total_chunks"],
     )
+    logging.info("OpenAI reports the store's files as %s, size %s bytes",
+                 stats["store_file_counts"], stats["store_usage_bytes"])
     print(json.dumps(stats, indent=2))
     logging.info("Vector store id: %s  (put it in .env as VECTOR_STORE_ID)", stats["vector_store_id"])
     return 0 if stats["failed"] == 0 else 1

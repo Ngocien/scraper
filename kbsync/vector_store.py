@@ -104,6 +104,14 @@ def plan_delta(docs: list[Doc], remote: list[RemoteFile], prune: bool = True) ->
     return plan
 
 
+def _as_dict(obj) -> dict:
+    if obj is None:
+        return {}
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    return dict(vars(obj))
+
+
 class VectorStoreSync:
     def __init__(self, client, vector_store_id: str | None = None, name: str = "optibot-kb", workers: int = 8):
         self.client = client
@@ -167,13 +175,13 @@ class VectorStoreSync:
         failures: list[str] = []
 
         def run(fn, items, label, name_of):
-            ok = 0
+            ok = []
             with ThreadPoolExecutor(self.workers) as pool:
                 futures = [(item, pool.submit(fn, item)) for item in items]
                 for item, fut in futures:
                     try:
                         fut.result()
-                        ok += 1
+                        ok.append(item)
                     except Exception as exc:
                         log.error("%s failed for %s: %s", label, name_of(item), exc)
                         failures.append(f"{label}:{name_of(item)}")
@@ -183,17 +191,21 @@ class VectorStoreSync:
         updated = run(self._replace, plan.updated, "update", lambda i: i[0].filename)
         removed = run(lambda r: self._remove(r.file_id), plan.removed, "remove", lambda r: r.file_id)
 
-        embedded = plan.added + [d for d, _ in plan.updated]
+        embedded = added + [d for d, _ in updated]  # only the uploads that succeeded
+        store = self.client.vector_stores.retrieve(self.vector_store_id)
         return {
             "vector_store_id": self.vector_store_id,
-            "added": added,
-            "updated": updated,
+            "added": len(added),
+            "updated": len(updated),
             "skipped": len(plan.skipped),
-            "removed": removed,
+            "removed": len(removed),
             "failed": len(failures),
             "failures": failures,
-            "files_embedded": added + updated,
+            "files_embedded": len(embedded),
             "chunks_embedded": sum(estimate_chunks(d.content) for d in embedded),
+            # Reported by OpenAI, as a cross-check of the local numbers.
+            "store_file_counts": _as_dict(getattr(store, "file_counts", None)),
+            "store_usage_bytes": getattr(store, "usage_bytes", None),
             "total_files": len(docs),
             "total_chunks": sum(estimate_chunks(d.content) for d in docs),
         }
