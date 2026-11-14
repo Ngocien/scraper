@@ -2,7 +2,7 @@
 
 Scrapes a Zendesk help center to clean Markdown, keeps an OpenAI vector store in sync (uploading only changed articles) and runs daily in Docker.
 
-**Daily job logs:** [GitHub Actions › daily-sync](https://github.com/Ngocien/scraper/actions/workflows/daily-sync.yml). Open the latest run to see the log, the counts summary and the `last-run-N` artefact (`last_run.json` + `last_run.log`).
+**Daily job logs:** DigitalOcean App Platform job `daily-sync`. Link: <DO-LOGS-LINK>. Screenshot of the latest run: [docs/do-job-logs.webp](docs/do-job-logs.webp).
 
 ## Setup & run locally
 
@@ -51,7 +51,15 @@ Step by step: `python scrape.py` writes `articles/*.md`, and `python upload.py` 
 Each run logs, for example:
 `added=3 updated=1 skipped=<rest> removed=0 failed=0` and `Embedded 4 files / ~5 chunks this run; store holds <N> files`.
 
-**Deployment:** `.github/workflows/daily-sync.yml` builds the Docker image and runs it every day at 02:17 UTC, with a manual "Run workflow" button. It needs the repository secrets `OPENAI_API_KEY` and `VECTOR_STORE_ID`. The same image runs on DigitalOcean, Render or Fly.io as a scheduled job.
+**Deployment (DigitalOcean App Platform):** `.do/app.yaml` defines a scheduled job (`kind: SCHEDULED`, cron `17 2 * * *` UTC).
+It builds the `Dockerfile` from `main` and runs `main.py` once a day, and it rebuilds on every push.
+`OPENAI_API_KEY` is an encrypted secret and `VECTOR_STORE_ID` is a plain env var.
+The logs are under App → `daily-sync` → **Logs**, and each run ends with the counts line and `Run ok`.
+**Bonus: GitHub Actions.** `.github/workflows/daily-sync.yml` runs the same image daily at 14:17 UTC, 12 hours after the DigitalOcean run.
+Each run shows the counts in its summary and keeps `last_run.json` and `last_run.log` as an artefact: [Actions › daily-sync](https://github.com/Ngocien/scraper/actions/workflows/daily-sync.yml).
+It needs the repository secrets `OPENAI_API_KEY` and `VECTOR_STORE_ID`.
+Because only the delta is uploaded, the two schedulers don't conflict.
+`.github/workflows/tests.yml` runs the tests on every push.
 
 ## Assistant
 

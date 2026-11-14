@@ -1,0 +1,24 @@
+# DigitalOcean App Platform: one scheduled job that builds the Dockerfile and runs main.py daily.
+# Create with:  doctl apps create --spec .do/app.yaml   (or use the control panel, see README)
+name: kb-sync
+region: sgp
+jobs:
+  - name: daily-sync
+    kind: SCHEDULED
+    schedule:
+      cron: "17 2 * * *"      # every day 02:17
+      time_zone: UTC
+    github:
+      repo: Ngocien/scraper
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: Dockerfile
+    instance_count: 1
+    envs:
+      - key: OPENAI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "set-me-in-the-control-panel"
+      - key: VECTOR_STORE_ID
+        scope: RUN_TIME
+        value: "vs_set-me"
